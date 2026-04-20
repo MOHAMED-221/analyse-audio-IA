@@ -7,10 +7,6 @@ load_dotenv()
 if "OPENAI_API_KEY" in st.secrets:
     os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
 
-from openai import OpenAI
-client = OpenAI()
-
-import streamlit as st
 import librosa
 import librosa.display
 import numpy as np
@@ -24,7 +20,7 @@ client = OpenAI()
 st.set_page_config(page_title="Analyse Audio", layout="wide")
 
 
-# On charge le modele une seule fois et on le garde en memoire
+# On charge le modele une seule fois au demarrage
 @st.cache_resource
 def charger_modele():
     with open("model_emotion.pkl", "rb") as f:
@@ -69,11 +65,13 @@ def analyser_audio(chemin_fichier):
     ])
 
 
+# Le modele se charge automatiquement au demarrage
+modele, normaliseur, encodeur = charger_modele()
+
 # En-tete de la page
 st.title("Analyse Audio par Intelligence Artificielle")
 st.caption("Depose un fichier audio pour obtenir la transcription et detecter l emotion de la voix")
 st.divider()
-
 
 # Menu lateral avec les infos du projet
 with st.sidebar:
@@ -84,22 +82,11 @@ with st.sidebar:
         "puis detecte l emotion de la voix grace a un modele entraine sur le dataset RAVDESS."
     )
     st.divider()
-
     st.caption("Details du modele")
     st.write("Algorithme : Reseau de neurones MLP")
     st.write("Accuracy : 90%")
     st.write("Dataset : RAVDESS — 1440 fichiers audio")
     st.write("Emotions : neutre, calme, joie, tristesse, colere, peur, degout, surprise")
-    st.divider()
-
-    # Bouton pour charger le modele
-    if st.button("Charger le modele", use_container_width=True):
-        with st.spinner("Chargement du modele en cours..."):
-            try:
-                charger_modele()
-                st.success("Le modele est pret")
-            except Exception as e:
-                st.error(f"Impossible de charger le modele : {e}")
 
 
 # Zone principale — upload du fichier
@@ -135,31 +122,26 @@ if fichier:
     # Colonne droite — Detection de l emotion
     with colonne_droite:
         st.subheader("Emotion ressentie dans la voix")
-        try:
-            modele, normaliseur, encodeur = charger_modele()
 
-            # On extrait les caracteristiques du fichier audio
-            caracteristiques = analyser_audio(chemin_tmp)
-            caracteristiques_normalisees = normaliseur.transform([caracteristiques])
+        # On extrait les caracteristiques du fichier audio
+        caracteristiques = analyser_audio(chemin_tmp)
+        caracteristiques_normalisees = normaliseur.transform([caracteristiques])
 
-            # Le modele predit l emotion
-            prediction_encodee = modele.predict(caracteristiques_normalisees)[0]
-            emotion = encodeur.inverse_transform([prediction_encodee])[0]
-            probabilites = modele.predict_proba(caracteristiques_normalisees)[0]
+        # Le modele predit l emotion
+        prediction_encodee = modele.predict(caracteristiques_normalisees)[0]
+        emotion = encodeur.inverse_transform([prediction_encodee])[0]
+        probabilites = modele.predict_proba(caracteristiques_normalisees)[0]
 
-            # On affiche le resultat principal
-            st.metric(label="Emotion detectee", value=emotion.upper())
+        # On affiche le resultat principal
+        st.metric(label="Emotion detectee", value=emotion.upper())
 
-            # On affiche les probabilites pour chaque emotion
-            st.write("Niveau de confiance par emotion :")
-            for nom_emotion, proba in sorted(
-                zip(encodeur.classes_, probabilites),
-                key=lambda x: -x[1]
-            ):
-                st.progress(float(proba), text=f"{nom_emotion} — {proba*100:.1f}%")
-
-        except Exception as e:
-            st.warning("Clique sur 'Charger le modele' dans le menu a gauche avant d analyser un fichier.")
+        # On affiche les probabilites pour chaque emotion
+        st.write("Niveau de confiance par emotion :")
+        for nom_emotion, proba in sorted(
+            zip(encodeur.classes_, probabilites),
+            key=lambda x: -x[1]
+        ):
+            st.progress(float(proba), text=f"{nom_emotion} — {proba*100:.1f}%")
 
     st.divider()
 
@@ -172,7 +154,6 @@ if fichier:
 
     fig, axes = plt.subplots(2, 1, figsize=(12, 5))
 
-    # Spectrogramme — la photo du son
     librosa.display.specshow(
         librosa.amplitude_to_db(np.abs(librosa.stft(son)), ref=np.max),
         sr=frequence, x_axis="time", y_axis="hz",
@@ -180,7 +161,6 @@ if fichier:
     )
     axes[0].set_title("Spectrogramme — frequences dans le temps", fontsize=10)
 
-    # MFCC — l empreinte de la voix
     librosa.display.specshow(mfcc, sr=frequence, x_axis="time", ax=axes[1], cmap="magma")
     axes[1].set_title("MFCC — empreinte de la voix utilisee par le modele", fontsize=10)
 

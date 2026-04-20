@@ -1,0 +1,8 @@
+openai
+streamlit
+librosa
+numpy
+scikit-learn
+matplotlib
+python-dotenv
+tqdm

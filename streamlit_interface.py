@@ -58,10 +58,11 @@ def analyser_audio(chemin_fichier):
 
     # Le tempo mesure la vitesse du debit de parole
     tempo, _ = librosa.beat.beat_track(y=son, sr=frequence)
+    tempo = float(np.atleast_1d(tempo)[0])
 
     return np.hstack([
         mfcc_moyenne, mfcc_variation, chroma_moyenne, mel_moyenne,
-        [zcr, volume, pitch_moyen, pitch_variation, float(tempo)]
+        [zcr, volume, pitch_moyen, pitch_variation, tempo]
     ])
 
 

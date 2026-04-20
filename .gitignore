@@ -1,5 +1,4 @@
 .env
-model_emotion.pkl
 __pycache__/
 *.pyc
 .ipynb_checkpoints/

@@ -1,6 +1,14 @@
-from dotenv import load_dotenv
 import os
+import streamlit as st
+from dotenv import load_dotenv
+
 load_dotenv()
+
+if "OPENAI_API_KEY" in st.secrets:
+    os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
+
+from openai import OpenAI
+client = OpenAI()
 
 import streamlit as st
 import librosa
